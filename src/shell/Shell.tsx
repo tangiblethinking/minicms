@@ -12,6 +12,11 @@ import {
   ElementsCanvasPane,
   ElementsSelectionPane,
 } from "@/elements/ElementsEditor";
+import {
+  ComponentsAddPane,
+  ComponentsCanvasPane,
+  ComponentsSelectionPane,
+} from "@/component-library/ComponentsEditor";
 import { ShelfNav } from "@/shell/ShelfNav";
 import { shelfLabel } from "@/shell/shelves";
 
@@ -40,6 +45,7 @@ function StudioFrame() {
   }
 
   const onElements = studio.shelf === "elements";
+  const onComponents = studio.shelf === "components";
 
   return (
     <div className="flex min-h-dvh flex-col bg-paper text-ink lg:h-dvh">
@@ -47,13 +53,31 @@ function StudioFrame() {
       <div className="flex flex-1 flex-col lg:min-h-0 lg:flex-row">
         <div className="order-2 border-b border-line bg-panel lg:order-1 lg:w-72 lg:overflow-y-auto lg:border-r lg:border-b-0">
           <ShelfNav active={studio.shelf} onSelect={studio.setShelf} />
-          {onElements ? <ElementsAddPane /> : <AddPane />}
+          {onComponents ? (
+            <ComponentsAddPane />
+          ) : onElements ? (
+            <ElementsAddPane />
+          ) : (
+            <AddPane />
+          )}
         </div>
         <div className="order-1 min-w-0 flex-1 bg-paper lg:order-2 lg:overflow-y-auto">
-          {onElements ? <ElementsCanvasPane /> : <CanvasPane />}
+          {onComponents ? (
+            <ComponentsCanvasPane />
+          ) : onElements ? (
+            <ElementsCanvasPane />
+          ) : (
+            <CanvasPane />
+          )}
         </div>
         <div className="order-3 border-t border-line bg-panel lg:w-80 lg:overflow-y-auto lg:border-t-0 lg:border-l">
-          {onElements ? <ElementsSelectionPane /> : <SelectionPane />}
+          {onComponents ? (
+            <ComponentsSelectionPane />
+          ) : onElements ? (
+            <ElementsSelectionPane />
+          ) : (
+            <SelectionPane />
+          )}
         </div>
       </div>
       <Footer />
@@ -67,10 +91,47 @@ function Header() {
   const studio = useStudio();
   const fileRef = useRef<HTMLInputElement>(null);
   const onElements = studio.shelf === "elements";
-  const unsaved = onElements ? studio.elementUnsaved : studio.unsaved;
-  const canExport = onElements ? studio.elementCanExport : studio.canExport;
-  const saveLabel = onElements ? "Save element" : "Save design system";
-  const exportLabel = onElements ? "Export element library" : "Export design system";
+  const onComponents = studio.shelf === "components";
+  const unsaved = onComponents
+    ? studio.componentUnsaved
+    : onElements
+      ? studio.elementUnsaved
+      : studio.unsaved;
+  const canExport = onComponents
+    ? studio.componentCanExport
+    : onElements
+      ? studio.elementCanExport
+      : studio.canExport;
+  const saveLabel = onComponents
+    ? "Save component"
+    : onElements
+      ? "Save element"
+      : "Save design system";
+  const exportLabel = onComponents
+    ? "Export component library"
+    : onElements
+      ? "Export element library"
+      : "Export design system";
+  const filename = onComponents
+    ? "components.tpscmp.json"
+    : onElements
+      ? "elements.tpsel.json"
+      : "design-system.tpsds.json";
+  const saveTestId = onComponents
+    ? "save-component"
+    : onElements
+      ? "save-element"
+      : "save-design-system";
+  const exportTestId = onComponents
+    ? "export-component-library"
+    : onElements
+      ? "export-element-library"
+      : "export-design-system";
+  const importTestId = onComponents
+    ? "import-components"
+    : onElements
+      ? "import-elements"
+      : "import-design-system";
 
   return (
     <header className="flex shrink-0 flex-col gap-3 border-b border-line bg-panel px-4 py-3 lg:flex-row lg:items-center">
@@ -86,7 +147,7 @@ function Header() {
         </p>
         <button
           type="button"
-          data-testid={onElements ? "save-element" : "save-design-system"}
+          data-testid={saveTestId}
           onClick={studio.save}
           className={primaryButton}
         >
@@ -94,14 +155,10 @@ function Header() {
         </button>
         <button
           type="button"
-          data-testid={onElements ? "export-element-library" : "export-design-system"}
+          data-testid={exportTestId}
           className={secondaryButton}
           disabled={!canExport}
-          title={
-            canExport
-              ? `Download ${onElements ? "elements.tpsel.json" : "design-system.tpsds.json"}`
-              : `${saveLabel} first.`
-          }
+          title={canExport ? `Download ${filename}` : `${saveLabel} first.`}
           onClick={studio.exportFile}
         >
           {exportLabel}
@@ -109,7 +166,7 @@ function Header() {
         <button
           type="button"
           className={secondaryButton}
-          data-testid={onElements ? "import-elements" : "import-design-system"}
+          data-testid={importTestId}
           onClick={() => fileRef.current?.click()}
         >
           Import
@@ -135,36 +192,45 @@ function Header() {
 function Footer() {
   const studio = useStudio();
   const onElements = studio.shelf === "elements";
-  const itemName = onElements
-    ? (studio.openElement?.name ?? "")
-    : !studio.selection
-      ? ""
-      : studio.selection.kind === "color"
-        ? (studio.file.colors.find((color) => color.id === studio.selection?.id)?.name ?? "Color")
-        : studio.selection.kind === "font"
-          ? (studio.file.fonts.find((font) => font.id === studio.selection?.id)?.name ?? "Font")
-          : (studio.file.radius.find((token) => token.id === studio.selection?.id)?.id ?? "Radius");
+  const onComponents = studio.shelf === "components";
+  const itemName = onComponents
+    ? studio.componentTrail.join(" / ")
+    : onElements
+      ? (studio.openElement?.name ?? "")
+      : !studio.selection
+        ? ""
+        : studio.selection.kind === "color"
+          ? (studio.file.colors.find((color) => color.id === studio.selection?.id)?.name ?? "Color")
+          : studio.selection.kind === "font"
+            ? (studio.file.fonts.find((font) => font.id === studio.selection?.id)?.name ?? "Font")
+            : (studio.file.radius.find((token) => token.id === studio.selection?.id)?.id ?? "Radius");
+  const where = onComponents
+    ? `Where you are: Components${itemName ? ` / ${itemName}` : ""}`
+    : `Where you are: ${shelfLabel(studio.shelf)}${itemName ? ` / ${itemName}` : ""}`;
 
   return (
     <footer className="flex shrink-0 flex-col gap-3 border-t border-line bg-panel px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <p className="text-sm" data-testid="where">
-        Where you are: {shelfLabel(studio.shelf)}
-        {itemName ? ` / ${itemName}` : ""}
+        {where}
       </p>
       <div className="grid grid-cols-3 gap-2">
         <button
           type="button"
           className={secondaryButton}
-          disabled
-          title="Available in a later phase"
+          data-testid="group-selection"
+          disabled={!onComponents || !studio.canGroup}
+          title={onComponents ? "Wrap the selection in a row" : "Available in a later phase"}
+          onClick={studio.groupSelected}
         >
           Group
         </button>
         <button
           type="button"
           className={secondaryButton}
-          disabled
-          title="Available in a later phase"
+          data-testid="ungroup-selection"
+          disabled={!onComponents || !studio.canUngroup}
+          title={onComponents ? "Lift the group children" : "Available in a later phase"}
+          onClick={studio.ungroupSelected}
         >
           Ungroup
         </button>
@@ -172,7 +238,9 @@ function Footer() {
           type="button"
           className={secondaryButton}
           data-testid="delete-selection"
-          disabled={onElements ? !studio.openElement : !studio.selection}
+          disabled={
+            onComponents ? !studio.openComponent : onElements ? !studio.openElement : !studio.selection
+          }
           onClick={studio.requestDelete}
         >
           Delete

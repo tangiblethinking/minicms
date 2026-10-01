@@ -22,8 +22,31 @@ import {
 import type { ElementItem, ElementLibraryFile, Node } from "@/elements/types";
 import { ELEMENTS_FILENAME, OTHER_DESIGN_SYSTEM_MESSAGE } from "@/elements/types";
 import { validateElementLibrary } from "@/elements/validate";
+import {
+  componentLibrarySignature,
+  createComponent,
+  createDefaultComponentLibrary,
+  placementNode,
+  touchComponentLibrary,
+} from "@/component-library/library";
+import {
+  findNode,
+  groupSelection,
+  insertPlacement,
+  insertTargetId,
+  moveSibling,
+  removeNode,
+  trailLabels,
+  ungroupSelection,
+  updateNode,
+} from "@/component-library/tree";
+import type { ComponentItem, ComponentLibraryFile, ComponentNode } from "@/component-library/types";
+import { COMPONENTS_FILENAME, OTHER_DESIGN_SYSTEM_MESSAGE as OTHER_COMPONENT_DESIGN_SYSTEM } from "@/component-library/types";
+import { validateComponentLibrary } from "@/component-library/validate";
 import type { ShelfId } from "@/shell/shelves";
 import {
+  COMPONENTS_SAVED_KEY,
+  COMPONENTS_WORKING_KEY,
   deleteDocument,
   ELEMENTS_SAVED_KEY,
   ELEMENTS_WORKING_KEY,
@@ -32,14 +55,17 @@ import {
   SAVED_KEY,
   WORKING_KEY,
 } from "@/storage/db";
-import { downloadDesignSystem, downloadElementLibrary } from "@/storage/files";
+import { downloadComponentLibrary, downloadDesignSystem, downloadElementLibrary } from "@/storage/files";
 
 type DialogState =
   | { type: "none" }
   | { type: "import"; file: DesignSystemFile }
   | { type: "import-elements"; file: ElementLibraryFile }
+  | { type: "import-components"; file: ComponentLibraryFile }
   | { type: "delete" }
   | { type: "delete-element" }
+  | { type: "delete-component" }
+  | { type: "delete-placement" }
   | { type: "reset" };
 
 type ToastState = { tone: "ok" | "error"; message: string } | null;
@@ -59,6 +85,16 @@ type StudioContextValue = {
   elementUnsaved: boolean;
   showTransparency: boolean;
   elementSelected: boolean;
+  components: ComponentLibraryFile;
+  openComponentId: string | null;
+  openComponent: ComponentItem | null;
+  selectedComponentNodeId: string | null;
+  selectedComponentNode: ComponentNode | null;
+  componentCanExport: boolean;
+  componentUnsaved: boolean;
+  componentTrail: string[];
+  canGroup: boolean;
+  canUngroup: boolean;
   toast: ToastState;
   dialog: DialogState;
   setShelf: (shelf: ShelfId) => void;
@@ -78,6 +114,19 @@ type StudioContextValue = {
   setOpenAttr: (key: string, value: string) => void;
   setShowTransparency: (value: boolean) => void;
   markElementSelected: () => void;
+  createComponent: () => void;
+  openComponentById: (id: string) => void;
+  renameOpenComponent: (name: string) => void;
+  addPlacement: (elementId: string) => void;
+  selectComponentNode: (id: string) => void;
+  setPlacementOverride: (key: "text" | "src" | "alt" | "href", value: string) => void;
+  setGroupClasses: (classes: string[]) => void;
+  renameGroup: (name: string) => void;
+  movePlacement: (direction: -1 | 1) => void;
+  groupSelected: () => void;
+  ungroupSelected: () => void;
+  editElementDefinition: (elementId: string) => void;
+  goToElements: () => void;
   requestDelete: () => void;
   requestReset: () => void;
   chooseImport: (text: string) => void;
@@ -108,16 +157,28 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [savedLibrarySig, setSavedLibrarySig] = useState<string | null>(null);
   const [showTransparency, setShowTransparency] = useState(false);
   const [elementSelected, setElementSelected] = useState(false);
+  const [components, setComponents] = useState<ComponentLibraryFile>(() =>
+    createDefaultComponentLibrary("pending"),
+  );
+  const [openComponentId, setOpenComponentId] = useState<string | null>(null);
+  const [selectedComponentNodeId, setSelectedComponentNodeId] = useState<string | null>(null);
+  const [savedComponentSig, setSavedComponentSig] = useState<string | null>(null);
   const [toast, setToast] = useState<ToastState>(null);
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
   const fileRef = useRef(file);
   const libraryRef = useRef(library);
+  const componentsRef = useRef(components);
   const shelfRef = useRef(shelf);
   const openElementIdRef = useRef(openElementId);
+  const openComponentIdRef = useRef(openComponentId);
+  const selectedComponentNodeIdRef = useRef(selectedComponentNodeId);
   fileRef.current = file;
   libraryRef.current = library;
+  componentsRef.current = components;
   shelfRef.current = shelf;
   openElementIdRef.current = openElementId;
+  openComponentIdRef.current = openComponentId;
+  selectedComponentNodeIdRef.current = selectedComponentNodeId;
 
   useEffect(() => {
     let cancel = false;
@@ -127,6 +188,8 @@ export function StudioProvider({ children }: { children: ReactNode }) {
         const saved = await getDocument<DesignSystemFile>(SAVED_KEY);
         const workingLib = await getDocument<ElementLibraryFile>(ELEMENTS_WORKING_KEY);
         const savedLib = await getDocument<ElementLibraryFile>(ELEMENTS_SAVED_KEY);
+        const workingComponents = await getDocument<ComponentLibraryFile>(COMPONENTS_WORKING_KEY);
+        const savedComponents = await getDocument<ComponentLibraryFile>(COMPONENTS_SAVED_KEY);
         if (cancel) return;
         const workingResult = working ? validateDesignSystem(working) : null;
         const savedResult = saved ? validateDesignSystem(saved) : null;
@@ -139,6 +202,20 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           workingLibResult?.ok ? workingLibResult.file : createDefaultElementLibrary(ds.id),
         );
         if (savedLibResult?.ok) setSavedLibrarySig(librarySignature(savedLibResult.file));
+        const workingComponentsResult = workingComponents
+          ? validateComponentLibrary(workingComponents)
+          : null;
+        const savedComponentsResult = savedComponents
+          ? validateComponentLibrary(savedComponents)
+          : null;
+        setComponents(
+          workingComponentsResult?.ok
+            ? workingComponentsResult.file
+            : createDefaultComponentLibrary(ds.id),
+        );
+        if (savedComponentsResult?.ok) {
+          setSavedComponentSig(componentLibrarySignature(savedComponentsResult.file));
+        }
       } finally {
         if (!cancel) setReady(true);
       }
@@ -165,6 +242,14 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   }, [library, ready]);
 
   useEffect(() => {
+    if (!ready) return;
+    const handle = window.setTimeout(() => {
+      void putDocument(COMPONENTS_WORKING_KEY, componentsRef.current);
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [components, ready]);
+
+  useEffect(() => {
     if (!toast) return;
     const handle = window.setTimeout(() => setToast(null), toast.tone === "error" ? 6000 : 4000);
     return () => window.clearTimeout(handle);
@@ -182,6 +267,14 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     if (openElementId) setOpenElementId(null);
   }, [library.items, openElementId]);
 
+  useEffect(() => {
+    if (openComponentId && components.items.some((item) => item.id === openComponentId)) return;
+    if (openComponentId) {
+      setOpenComponentId(null);
+      setSelectedComponentNodeId(null);
+    }
+  }, [components.items, openComponentId]);
+
   const currentSig = signature(file);
   const canExport = savedSig !== null && savedSig === currentSig;
   const unsaved = savedSig !== currentSig;
@@ -189,6 +282,31 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const elementCanExport = savedLibrarySig !== null && savedLibrarySig === currentLibrarySig;
   const elementUnsaved = savedLibrarySig !== currentLibrarySig;
   const openElement = library.items.find((item) => item.id === openElementId) ?? null;
+  const currentComponentSig = componentLibrarySignature(components);
+  const componentCanExport = savedComponentSig !== null && savedComponentSig === currentComponentSig;
+  const componentUnsaved = savedComponentSig !== currentComponentSig;
+  const openComponent = components.items.find((item) => item.id === openComponentId) ?? null;
+  const selectedComponentNode =
+    openComponent && selectedComponentNodeId
+      ? findNode(openComponent.root, selectedComponentNodeId)
+      : openComponent?.root ?? null;
+  const componentTrail = openComponent
+    ? trailLabels(
+        openComponent.name,
+        openComponent.root,
+        selectedComponentNode?.id ?? null,
+        library.items,
+      )
+    : [];
+  const canGroup = Boolean(
+    openComponent && selectedComponentNode && selectedComponentNode.id !== openComponent.root.id,
+  );
+  const canUngroup = Boolean(
+    openComponent &&
+      selectedComponentNode &&
+      !selectedComponentNode.ref &&
+      selectedComponentNode.id !== openComponent.root.id,
+  );
 
   const edit = useCallback((next: DesignSystemFile) => {
     setFile(touch(next));
@@ -196,6 +314,10 @@ export function StudioProvider({ children }: { children: ReactNode }) {
 
   const editLibrary = useCallback((next: ElementLibraryFile) => {
     setLibrary(touchLibrary(next));
+  }, []);
+
+  const editComponents = useCallback((next: ComponentLibraryFile) => {
+    setComponents(touchComponentLibrary(next));
   }, []);
 
   const setName = useCallback(
@@ -361,7 +483,212 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     setElementSelected(false);
   }, [editLibrary]);
 
+  const replaceOpenComponent = useCallback(
+    (root: ComponentNode) => {
+      const id = openComponentIdRef.current;
+      if (!id) return;
+      const current = componentsRef.current;
+      editComponents({
+        ...current,
+        items: current.items.map((item) => (item.id === id ? { ...item, root } : item)),
+      });
+    },
+    [editComponents],
+  );
+
+  const createComponentItem = useCallback(() => {
+    const current = componentsRef.current;
+    const item = createComponent(current.items, libraryRef.current.items);
+    editComponents({ ...current, items: [...current.items, item] });
+    setOpenComponentId(item.id);
+    setSelectedComponentNodeId(item.root.id);
+  }, [editComponents]);
+
+  const openComponentById = useCallback((id: string) => {
+    const item = componentsRef.current.items.find((entry) => entry.id === id);
+    if (!item) return;
+    setOpenComponentId(id);
+    setSelectedComponentNodeId(item.root.id);
+  }, []);
+
+  const renameOpenComponent = useCallback(
+    (name: string) => {
+      const id = openComponentIdRef.current;
+      if (!id) return;
+      const current = componentsRef.current;
+      editComponents({
+        ...current,
+        items: current.items.map((item) => (item.id === id ? { ...item, name } : item)),
+      });
+    },
+    [editComponents],
+  );
+
+  const addPlacement = useCallback(
+    (elementId: string) => {
+      const element = libraryRef.current.items.find((item) => item.id === elementId);
+      const openId = openComponentIdRef.current;
+      if (!element || !openId) return;
+      const current = componentsRef.current.items.find((item) => item.id === openId);
+      if (!current) return;
+      const parentId = insertTargetId(current.root, selectedComponentNodeIdRef.current);
+      const next = insertPlacement(current.root, parentId, placementNode(element));
+      replaceOpenComponent(next);
+    },
+    [replaceOpenComponent],
+  );
+
+  const selectComponentNode = useCallback((id: string) => {
+    setSelectedComponentNodeId(id);
+  }, []);
+
+  const setPlacementOverride = useCallback(
+    (key: "text" | "src" | "alt" | "href", value: string) => {
+      const openId = openComponentIdRef.current;
+      const nodeId = selectedComponentNodeIdRef.current;
+      if (!openId || !nodeId) return;
+      const current = componentsRef.current.items.find((item) => item.id === openId);
+      if (!current) return;
+      replaceOpenComponent(
+        updateNode(current.root, nodeId, (node) => ({
+          ...node,
+          overrides: { ...node.overrides, [key]: value },
+        })),
+      );
+    },
+    [replaceOpenComponent],
+  );
+
+  const setGroupClasses = useCallback(
+    (classes: string[]) => {
+      const openId = openComponentIdRef.current;
+      const nodeId = selectedComponentNodeIdRef.current;
+      if (!openId || !nodeId) return;
+      const current = componentsRef.current.items.find((item) => item.id === openId);
+      if (!current) return;
+      replaceOpenComponent(updateNode(current.root, nodeId, (node) => ({ ...node, classes })));
+    },
+    [replaceOpenComponent],
+  );
+
+  const renameGroup = useCallback(
+    (name: string) => {
+      const openId = openComponentIdRef.current;
+      const nodeId = selectedComponentNodeIdRef.current;
+      if (!openId || !nodeId) return;
+      const current = componentsRef.current.items.find((item) => item.id === openId);
+      if (!current) return;
+      replaceOpenComponent(
+        updateNode(current.root, nodeId, (node) => ({
+          ...node,
+          attrs: { ...node.attrs, "data-name": name },
+        })),
+      );
+    },
+    [replaceOpenComponent],
+  );
+
+  const movePlacement = useCallback(
+    (direction: -1 | 1) => {
+      const openId = openComponentIdRef.current;
+      const nodeId = selectedComponentNodeIdRef.current;
+      if (!openId || !nodeId) return;
+      const current = componentsRef.current.items.find((item) => item.id === openId);
+      if (!current) return;
+      replaceOpenComponent(moveSibling(current.root, nodeId, direction));
+    },
+    [replaceOpenComponent],
+  );
+
+  const groupSelected = useCallback(() => {
+    const openId = openComponentIdRef.current;
+    const nodeId = selectedComponentNodeIdRef.current;
+    if (!openId || !nodeId) return;
+    const current = componentsRef.current.items.find((item) => item.id === openId);
+    if (!current || nodeId === current.root.id) return;
+    const next = groupSelection(current.root, nodeId);
+    const parent = findNode(next, nodeId);
+    replaceOpenComponent(next);
+    const created = next.children.find((child) => child.children.some((entry) => entry.id === nodeId));
+    const walk = (node: ComponentNode): ComponentNode | null => {
+      if (node.children.some((child) => child.id === nodeId) && node.id !== current.root.id) return node;
+      for (const child of node.children) {
+        const found = walk(child);
+        if (found) return found;
+      }
+      return null;
+    };
+    const group = walk(next);
+    if (group) setSelectedComponentNodeId(group.id);
+    else if (parent) setSelectedComponentNodeId(nodeId);
+  }, [replaceOpenComponent]);
+
+  const ungroupSelected = useCallback(() => {
+    const openId = openComponentIdRef.current;
+    const nodeId = selectedComponentNodeIdRef.current;
+    if (!openId || !nodeId) return;
+    const current = componentsRef.current.items.find((item) => item.id === openId);
+    if (!current) return;
+    const node = findNode(current.root, nodeId);
+    replaceOpenComponent(ungroupSelection(current.root, nodeId));
+    setSelectedComponentNodeId(node?.children[0]?.id ?? current.root.id);
+  }, [replaceOpenComponent]);
+
+  const removeOpenComponent = useCallback(() => {
+    const id = openComponentIdRef.current;
+    if (!id) return;
+    editComponents({
+      ...componentsRef.current,
+      items: componentsRef.current.items.filter((item) => item.id !== id),
+    });
+    setOpenComponentId(null);
+    setSelectedComponentNodeId(null);
+  }, [editComponents]);
+
+  const removeSelectedPlacement = useCallback(() => {
+    const openId = openComponentIdRef.current;
+    const nodeId = selectedComponentNodeIdRef.current;
+    if (!openId || !nodeId) return;
+    const current = componentsRef.current.items.find((item) => item.id === openId);
+    if (!current) return;
+    if (nodeId === current.root.id) {
+      removeOpenComponent();
+      return;
+    }
+    const next = removeNode(current.root, nodeId);
+    if (!next) {
+      removeOpenComponent();
+      return;
+    }
+    replaceOpenComponent(next);
+    setSelectedComponentNodeId(current.root.id);
+  }, [removeOpenComponent, replaceOpenComponent]);
+
+  const editElementDefinition = useCallback((elementId: string) => {
+    if (!libraryRef.current.items.some((item) => item.id === elementId)) return;
+    setShelfState("elements");
+    setOpenElementId(elementId);
+    setElementSelected(true);
+  }, []);
+
+  const goToElements = useCallback(() => {
+    setShelfState("elements");
+  }, []);
+
   const requestDelete = useCallback(() => {
+    if (shelfRef.current === "components") {
+      if (!openComponentIdRef.current) return;
+      if (
+        selectedComponentNodeIdRef.current &&
+        selectedComponentNodeIdRef.current !==
+          componentsRef.current.items.find((item) => item.id === openComponentIdRef.current)?.root.id
+      ) {
+        setDialog({ type: "delete-placement" });
+        return;
+      }
+      setDialog({ type: "delete-component" });
+      return;
+    }
     if (shelfRef.current === "elements") {
       if (!openElementIdRef.current) return;
       setDialog({ type: "delete-element" });
@@ -383,10 +710,21 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       setToast({
         tone: "error",
         message:
-          shelfRef.current === "elements"
-            ? "This file is not an element library. Open it on its own shelf."
-            : WRONG_FILE_MESSAGE,
+          shelfRef.current === "components"
+            ? "This file is not a component library. Open it on its own shelf."
+            : shelfRef.current === "elements"
+              ? "This file is not an element library. Open it on its own shelf."
+              : WRONG_FILE_MESSAGE,
       });
+      return;
+    }
+    if (shelfRef.current === "components") {
+      const result = validateComponentLibrary(parsed);
+      if (!result.ok) {
+        setToast({ tone: "error", message: result.message });
+        return;
+      }
+      setDialog({ type: "import-components", file: result.file });
       return;
     }
     if (shelfRef.current === "elements") {
@@ -414,6 +752,11 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     }
     if (dialog.type === "delete-element") {
       removeOpenElement();
+      setDialog({ type: "none" });
+      return;
+    }
+    if (dialog.type === "delete-component" || dialog.type === "delete-placement") {
+      removeSelectedPlacement();
       setDialog({ type: "none" });
       return;
     }
@@ -452,8 +795,20 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       void deleteDocument(ELEMENTS_SAVED_KEY);
       void putDocument(ELEMENTS_WORKING_KEY, dialog.file);
       if (mismatch) setToast({ tone: "error", message: OTHER_DESIGN_SYSTEM_MESSAGE });
+      return;
     }
-  }, [dialog, removeOpenElement, removeSelection]);
+    if (dialog.type === "import-components") {
+      const mismatch = dialog.file.designSystemId !== fileRef.current.id;
+      setComponents(dialog.file);
+      setOpenComponentId(dialog.file.items[0]?.id ?? null);
+      setSelectedComponentNodeId(dialog.file.items[0]?.root.id ?? null);
+      setSavedComponentSig(null);
+      setDialog({ type: "none" });
+      void deleteDocument(COMPONENTS_SAVED_KEY);
+      void putDocument(COMPONENTS_WORKING_KEY, dialog.file);
+      if (mismatch) setToast({ tone: "error", message: OTHER_COMPONENT_DESIGN_SYSTEM });
+    }
+  }, [dialog, removeOpenElement, removeSelectedPlacement, removeSelection]);
 
   const cancelDialog = useCallback(() => setDialog({ type: "none" }), []);
 
@@ -471,6 +826,18 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       void putDocument(ELEMENTS_WORKING_KEY, next);
       void putDocument(ELEMENTS_SAVED_KEY, next);
       setToast({ tone: "ok", message: `Saved ${ELEMENTS_FILENAME}` });
+      return;
+    }
+    if (shelfRef.current === "components") {
+      const next = touchComponentLibrary({
+        ...componentsRef.current,
+        designSystemId: fileRef.current.id,
+      });
+      setComponents(next);
+      setSavedComponentSig(componentLibrarySignature(next));
+      void putDocument(COMPONENTS_WORKING_KEY, next);
+      void putDocument(COMPONENTS_SAVED_KEY, next);
+      setToast({ tone: "ok", message: `Saved ${COMPONENTS_FILENAME}` });
       return;
     }
     const next = touch(fileRef.current);
@@ -491,6 +858,21 @@ export function StudioProvider({ children }: { children: ReactNode }) {
           return;
         }
         downloadElementLibrary(result.file);
+      })();
+      return;
+    }
+    if (shelfRef.current === "components") {
+      void (async () => {
+        const saved = await getDocument<ComponentLibraryFile>(COMPONENTS_SAVED_KEY);
+        const result = saved ? validateComponentLibrary(saved) : null;
+        if (
+          !result?.ok ||
+          componentLibrarySignature(result.file) !== componentLibrarySignature(componentsRef.current)
+        ) {
+          setToast({ tone: "error", message: "Save component first." });
+          return;
+        }
+        downloadComponentLibrary(result.file);
       })();
       return;
     }
@@ -521,6 +903,16 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       elementUnsaved,
       showTransparency,
       elementSelected,
+      components,
+      openComponentId,
+      openComponent,
+      selectedComponentNodeId,
+      selectedComponentNode,
+      componentCanExport,
+      componentUnsaved,
+      componentTrail,
+      canGroup,
+      canUngroup,
       toast,
       dialog,
       setShelf: setShelfState,
@@ -540,6 +932,19 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       setOpenAttr,
       setShowTransparency,
       markElementSelected: () => setElementSelected(true),
+      createComponent: createComponentItem,
+      openComponentById,
+      renameOpenComponent,
+      addPlacement,
+      selectComponentNode,
+      setPlacementOverride,
+      setGroupClasses,
+      renameGroup,
+      movePlacement,
+      groupSelected,
+      ungroupSelected,
+      editElementDefinition,
+      goToElements,
       requestDelete,
       requestReset,
       chooseImport,
@@ -564,6 +969,16 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       elementUnsaved,
       showTransparency,
       elementSelected,
+      components,
+      openComponentId,
+      openComponent,
+      selectedComponentNodeId,
+      selectedComponentNode,
+      componentCanExport,
+      componentUnsaved,
+      componentTrail,
+      canGroup,
+      canUngroup,
       toast,
       dialog,
       setName,
@@ -578,6 +993,19 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       setOpenClasses,
       setOpenText,
       setOpenAttr,
+      createComponentItem,
+      openComponentById,
+      renameOpenComponent,
+      addPlacement,
+      selectComponentNode,
+      setPlacementOverride,
+      setGroupClasses,
+      renameGroup,
+      movePlacement,
+      groupSelected,
+      ungroupSelected,
+      editElementDefinition,
+      goToElements,
       requestDelete,
       requestReset,
       chooseImport,

@@ -1,7 +1,7 @@
 export const SHELVES = [
   { id: "design-system", label: "Design system", enabled: true },
   { id: "elements", label: "Elements", enabled: true },
-  { id: "components", label: "Components", enabled: false },
+  { id: "components", label: "Components", enabled: true },
   { id: "sections", label: "Sections", enabled: false },
   { id: "features", label: "Features", enabled: false },
   { id: "pages", label: "Pages", enabled: false },

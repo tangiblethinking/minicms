@@ -325,6 +325,11 @@ export function StudioDialog() {
           : "";
 
   const elementName = studio.openElement?.name ?? "";
+  const componentName = studio.openComponent?.name ?? "this component";
+  const placementName = studio.selectedComponentNode?.ref
+    ? (studio.library.items.find((item) => item.id === studio.selectedComponentNode?.ref?.id)?.name ??
+      "this placement")
+    : "this group";
   const copy =
     studio.dialog.type === "import"
       ? "Replace the current design system?"
@@ -332,11 +337,21 @@ export function StudioDialog() {
         ? studio.dialog.file.designSystemId !== studio.file.id
           ? "Replace the current element library? This element library was built with another design system."
           : "Replace the current element library?"
-        : studio.dialog.type === "reset"
-          ? "Clear the saved design system and start over?"
-          : `Delete ${studio.dialog.type === "delete-element" ? elementName : selectedName || "this item"}? This cannot be undone.`;
+        : studio.dialog.type === "import-components"
+          ? studio.dialog.file.designSystemId !== studio.file.id
+            ? "Replace the current component library? This component library was built with another design system."
+            : "Replace the current component library?"
+          : studio.dialog.type === "reset"
+            ? "Clear the saved design system and start over?"
+            : studio.dialog.type === "delete-component"
+              ? `Delete ${componentName}? This cannot be undone.`
+              : studio.dialog.type === "delete-placement"
+                ? `Delete ${placementName}? This cannot be undone.`
+                : `Delete ${studio.dialog.type === "delete-element" ? elementName : selectedName || "this item"}? This cannot be undone.`;
   const confirmLabel =
-    studio.dialog.type === "import" || studio.dialog.type === "import-elements"
+    studio.dialog.type === "import" ||
+    studio.dialog.type === "import-elements" ||
+    studio.dialog.type === "import-components"
       ? "Replace"
       : studio.dialog.type === "reset"
         ? "Reset data"

@@ -1,5 +1,7 @@
 import { DESIGN_SYSTEM_FILENAME } from "@/design/types";
 import type { DesignSystemFile } from "@/design/types";
+import { COMPONENTS_FILENAME } from "@/component-library/types";
+import type { ComponentLibraryFile } from "@/component-library/types";
 import { ELEMENTS_FILENAME } from "@/elements/types";
 import type { ElementLibraryFile } from "@/elements/types";
 
@@ -21,4 +23,8 @@ export function downloadDesignSystem(file: DesignSystemFile) {
 
 export function downloadElementLibrary(file: ElementLibraryFile) {
   downloadJson(ELEMENTS_FILENAME, file);
+}
+
+export function downloadComponentLibrary(file: ComponentLibraryFile) {
+  downloadJson(COMPONENTS_FILENAME, file);
 }
