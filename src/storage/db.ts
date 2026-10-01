@@ -1,16 +1,21 @@
 import { openDB, type DBSchema, type IDBPDatabase } from "idb";
 import type { DesignSystemFile } from "@/design/types";
+import type { ElementLibraryFile } from "@/elements/types";
 
 const DB_NAME = "compositional-canvas";
 const STORE = "kv";
 
 export const WORKING_KEY = "design-system";
 export const SAVED_KEY = "design-system-saved";
+export const ELEMENTS_WORKING_KEY = "elements";
+export const ELEMENTS_SAVED_KEY = "elements-saved";
+
+type StoredFile = DesignSystemFile | ElementLibraryFile;
 
 interface StudioDB extends DBSchema {
   kv: {
     key: string;
-    value: DesignSystemFile;
+    value: StoredFile;
   };
 }
 
@@ -20,18 +25,19 @@ function db() {
   if (!database) {
     database = openDB<StudioDB>(DB_NAME, 1, {
       upgrade(next) {
-        next.createObjectStore(STORE);
+        if (!next.objectStoreNames.contains(STORE)) next.createObjectStore(STORE);
       },
     });
   }
   return database;
 }
 
-export async function getDocument(key: string): Promise<DesignSystemFile | undefined> {
-  return (await db()).get(STORE, key);
+export async function getDocument<T>(key: string): Promise<T | undefined> {
+  const value = await (await db()).get(STORE, key);
+  return value as T | undefined;
 }
 
-export async function putDocument(key: string, value: DesignSystemFile): Promise<void> {
+export async function putDocument(key: string, value: StoredFile): Promise<void> {
   await (await db()).put(STORE, value, key);
 }
 

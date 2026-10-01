@@ -324,14 +324,23 @@ export function StudioDialog() {
           ? studio.file.radius.find((token) => token.id === studio.selection?.id)?.id
           : "";
 
+  const elementName = studio.openElement?.name ?? "";
   const copy =
     studio.dialog.type === "import"
       ? "Replace the current design system?"
-      : studio.dialog.type === "reset"
-        ? "Clear the saved design system and start over?"
-        : `Delete ${selectedName || "this item"}? This cannot be undone.`;
+      : studio.dialog.type === "import-elements"
+        ? studio.dialog.file.designSystemId !== studio.file.id
+          ? "Replace the current element library? This element library was built with another design system."
+          : "Replace the current element library?"
+        : studio.dialog.type === "reset"
+          ? "Clear the saved design system and start over?"
+          : `Delete ${studio.dialog.type === "delete-element" ? elementName : selectedName || "this item"}? This cannot be undone.`;
   const confirmLabel =
-    studio.dialog.type === "import" ? "Replace" : studio.dialog.type === "reset" ? "Reset data" : "Delete";
+    studio.dialog.type === "import" || studio.dialog.type === "import-elements"
+      ? "Replace"
+      : studio.dialog.type === "reset"
+        ? "Reset data"
+        : "Delete";
 
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/40 p-4 sm:items-center">

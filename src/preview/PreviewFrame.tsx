@@ -1,15 +1,28 @@
+import type { Ref } from "react";
+
 type PreviewFrameProps = {
   srcDoc: string;
+  title?: string;
+  testId?: string;
+  transparent?: boolean;
+  frameRef?: Ref<HTMLIFrameElement>;
 };
 
-export function PreviewFrame({ srcDoc }: PreviewFrameProps) {
+export function PreviewFrame({
+  srcDoc,
+  title = "Design system sample",
+  testId = "sample-frame",
+  transparent = false,
+  frameRef,
+}: PreviewFrameProps) {
   return (
     <iframe
-      title="Design system sample"
+      ref={frameRef}
+      title={title}
       sandbox="allow-scripts"
       srcDoc={srcDoc}
-      data-testid="sample-frame"
-      className="h-full min-h-[28rem] w-full rounded-sm border-0 bg-panel"
+      data-testid={testId}
+      className={`h-full min-h-[28rem] w-full rounded-sm border-0 ${transparent ? "bg-transparent" : "bg-panel"}`}
     />
   );
 }

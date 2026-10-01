@@ -1,4 +1,250 @@
 {
   "tailwindVersion": "4.3",
-  "families": []
+  "families": [
+    {
+      "id": "display",
+      "label": "Display",
+      "group": "layout",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Block", "className": "block" },
+        { "label": "Flex", "className": "flex" },
+        { "label": "Inline flex", "className": "inline-flex" },
+        { "label": "Grid", "className": "grid" },
+        { "label": "Inline", "className": "inline" },
+        { "label": "Hidden", "className": "hidden" }
+      ]
+    },
+    {
+      "id": "direction",
+      "label": "Direction",
+      "group": "layout",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Row", "className": "flex-row" },
+        { "label": "Column", "className": "flex-col" }
+      ]
+    },
+    {
+      "id": "width",
+      "label": "Width",
+      "group": "layout",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Auto", "className": "w-auto" },
+        { "label": "Full", "className": "w-full" },
+        { "label": "Fit", "className": "w-fit" },
+        { "label": "Half", "className": "w-1/2" },
+        { "label": "16rem", "className": "w-64" },
+        { "label": "24rem", "className": "w-96" }
+      ]
+    },
+    {
+      "id": "height",
+      "label": "Height",
+      "group": "layout",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Auto", "className": "h-auto" },
+        { "label": "Full", "className": "h-full" },
+        { "label": "Screen", "className": "h-screen" },
+        { "label": "Fit", "className": "h-fit" },
+        { "label": "16rem", "className": "h-64" }
+      ]
+    },
+    {
+      "id": "aspect",
+      "label": "Aspect",
+      "group": "layout",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Auto", "className": "aspect-auto" },
+        { "label": "Square", "className": "aspect-square" },
+        { "label": "Video", "className": "aspect-video" },
+        { "label": "4 / 5", "className": "aspect-[4/5]" },
+        { "label": "3 / 4", "className": "aspect-[3/4]" }
+      ]
+    },
+    {
+      "id": "padding",
+      "label": "Padding",
+      "group": "spacing",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "0", "className": "p-0" },
+        { "label": "1", "className": "p-1" },
+        { "label": "2", "className": "p-2" },
+        { "label": "3", "className": "p-3" },
+        { "label": "4", "className": "p-4" },
+        { "label": "6", "className": "p-6" },
+        { "label": "8", "className": "p-8" },
+        { "label": "12", "className": "p-12" }
+      ]
+    },
+    {
+      "id": "margin",
+      "label": "Margin",
+      "group": "spacing",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "0", "className": "m-0" },
+        { "label": "1", "className": "m-1" },
+        { "label": "2", "className": "m-2" },
+        { "label": "3", "className": "m-3" },
+        { "label": "4", "className": "m-4" },
+        { "label": "6", "className": "m-6" },
+        { "label": "8", "className": "m-8" }
+      ]
+    },
+    {
+      "id": "gap",
+      "label": "Gap",
+      "group": "spacing",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "0", "className": "gap-0" },
+        { "label": "1", "className": "gap-1" },
+        { "label": "2", "className": "gap-2" },
+        { "label": "3", "className": "gap-3" },
+        { "label": "4", "className": "gap-4" },
+        { "label": "6", "className": "gap-6" },
+        { "label": "8", "className": "gap-8" }
+      ]
+    },
+    {
+      "id": "font",
+      "label": "Font",
+      "group": "type",
+      "tokens": "font",
+      "classPrefix": "font-",
+      "options": [{ "label": "Not set", "className": "" }]
+    },
+    {
+      "id": "font-size",
+      "label": "Size",
+      "group": "type",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Extra small", "className": "text-xs" },
+        { "label": "Small", "className": "text-sm" },
+        { "label": "Base", "className": "text-base" },
+        { "label": "Large", "className": "text-lg" },
+        { "label": "Extra large", "className": "text-xl" },
+        { "label": "2XL", "className": "text-2xl" },
+        { "label": "3XL", "className": "text-3xl" },
+        { "label": "4XL", "className": "text-4xl" },
+        { "label": "5XL", "className": "text-5xl" }
+      ]
+    },
+    {
+      "id": "font-weight",
+      "label": "Weight",
+      "group": "type",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Normal", "className": "font-normal" },
+        { "label": "Medium", "className": "font-medium" },
+        { "label": "Semibold", "className": "font-semibold" },
+        { "label": "Bold", "className": "font-bold" }
+      ]
+    },
+    {
+      "id": "text-color",
+      "label": "Text color",
+      "group": "color",
+      "tokens": "color",
+      "classPrefix": "text-",
+      "options": [
+        { "label": "White", "className": "text-white" },
+        { "label": "Not set", "className": "" }
+      ]
+    },
+    {
+      "id": "background",
+      "label": "Background",
+      "group": "color",
+      "tokens": "color",
+      "classPrefix": "bg-",
+      "options": [
+        { "label": "White", "className": "bg-white" },
+        { "label": "Transparent", "className": "bg-transparent" },
+        { "label": "Not set", "className": "" }
+      ]
+    },
+    {
+      "id": "border-color",
+      "label": "Border",
+      "group": "color",
+      "tokens": "color",
+      "options": [{ "label": "Not set", "className": "" }]
+    },
+    {
+      "id": "radius",
+      "label": "Radius",
+      "group": "surface",
+      "tokens": "radius",
+      "classPrefix": "rounded-",
+      "options": [
+        { "label": "Full", "className": "rounded-full" },
+        { "label": "None", "className": "rounded-none" },
+        { "label": "Not set", "className": "" }
+      ]
+    },
+    {
+      "id": "shadow",
+      "label": "Shadow",
+      "group": "surface",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Small", "className": "shadow-sm" },
+        { "label": "Medium", "className": "shadow-md" },
+        { "label": "Large", "className": "shadow-lg" },
+        { "label": "None", "className": "shadow-none" }
+      ]
+    },
+    {
+      "id": "object-fit",
+      "label": "Fit",
+      "group": "image",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Cover", "className": "object-cover" },
+        { "label": "Contain", "className": "object-contain" },
+        { "label": "Fill", "className": "object-fill" },
+        { "label": "None", "className": "object-none" }
+      ]
+    },
+    {
+      "id": "object-position",
+      "label": "Position",
+      "group": "image",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Center", "className": "object-center" },
+        { "label": "Top", "className": "object-top" },
+        { "label": "Bottom", "className": "object-bottom" },
+        { "label": "Left", "className": "object-left" },
+        { "label": "Right", "className": "object-right" }
+      ]
+    },
+    {
+      "id": "hover-shadow",
+      "label": "Hover shadow",
+      "group": "state",
+      "options": [
+        { "label": "Not set", "className": "" },
+        { "label": "Small", "className": "hover:shadow-sm" },
+        { "label": "Medium", "className": "hover:shadow-md" },
+        { "label": "Large", "className": "hover:shadow-lg" }
+      ]
+    },
+    {
+      "id": "hover-background",
+      "label": "Hover background",
+      "group": "state",
+      "tokens": "color",
+      "classPrefix": "hover:bg-",
+      "options": [{ "label": "Not set", "className": "" }]
+    }
+  ]
 }
