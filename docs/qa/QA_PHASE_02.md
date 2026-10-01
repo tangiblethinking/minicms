@@ -1,7 +1,7 @@
 # QA Phase 2 — Component library
 
 Phase: 2
-Commit: pending push
+Commit: 6e2e9ec2dedf151323d88fe98b05731fd3126ea7
 UI five answers:
 - Where am I? Shelf label is Components. Footer reads Where you are: Components / Product card / Price row / Price when that path is selected.
 - What can I add? Add lists saved elements only. Empty element library says Save a button on Elements first and offers Go to Elements. There is no raw div control.
