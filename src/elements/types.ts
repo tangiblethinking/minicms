@@ -10,11 +10,14 @@ export type Node = {
   children: Node[];
 };
 
+import type { Properties } from "@/props/model";
+
 export type ElementItem = {
   id: string;
   name: string;
   slug: string;
   root: Node;
+  props?: Properties;
 };
 
 export type ElementLibraryFile = {

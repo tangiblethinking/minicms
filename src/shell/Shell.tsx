@@ -145,6 +145,14 @@ function Header() {
         <p className="text-sm text-muted" data-testid="save-state">
           {unsaved ? "Save to enable export." : "Export uses the saved file."}
         </p>
+        <div className="flex gap-2" data-testid="breakpoint">
+          <button type="button" className={secondaryButton} aria-pressed={studio.breakpoint === "mobile"} onClick={() => studio.setBreakpoint("mobile")}>
+            Mobile
+          </button>
+          <button type="button" className={secondaryButton} aria-pressed={studio.breakpoint === "desktop"} onClick={() => studio.setBreakpoint("desktop")}>
+            Desktop
+          </button>
+        </div>
         <button
           type="button"
           data-testid={saveTestId}

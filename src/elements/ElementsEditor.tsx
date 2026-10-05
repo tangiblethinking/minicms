@@ -3,6 +3,8 @@ import { applyFamily, ownedClasses, sameClassSet, type OwnsContext } from "@/cat
 import { familyOptions, readCatalog } from "@/catalog/options";
 import { GROUP_LABEL, GROUP_ORDER, type CatalogFamily, type CatalogGroup } from "@/catalog/types";
 import { useStudio } from "@/design/state";
+import { PropertyFields } from "@/props/PropertyFields";
+import type { Properties } from "@/props/model";
 import { formatElementHtml } from "@/elements/html";
 import { familyApplies, isTextual } from "@/elements/relevance";
 import { STARTERS } from "@/elements/starters";
@@ -105,15 +107,16 @@ export function ElementsCanvasPane() {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const open = studio.openElement;
   const srcDoc =
-    open === null ? "" : buildElementSrcDoc(studio.file, open.root, studio.showTransparency);
+    open === null ? "" : buildElementSrcDoc(studio.file, open, studio.showTransparency, studio.breakpoint);
   const markSelected = studio.markElementSelected;
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.source !== frameRef.current?.contentWindow) return;
-      const data = event.data as { source?: string; type?: string } | null;
-      if (!data || data.source !== "compositional-canvas" || data.type !== "select-node") return;
-      markSelected();
+      const data = event.data as { source?: string; type?: string; text?: string } | null;
+      if (!data || data.source !== "compositional-canvas") return;
+      if (data.type === "select-node") markSelected();
+      if (data.type === "edit-text" && typeof data.text === "string") studio.setElementProps({ text: data.text });
     };
     window.addEventListener("message", onMessage);
     return () => window.removeEventListener("message", onMessage);
@@ -139,6 +142,17 @@ export function ElementsCanvasPane() {
           Show transparency
         </label>
       </div>
+      {open ? (
+        <label className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Canvas text</span>
+          <input
+            className="h-11 w-full rounded-sm border border-line bg-panel px-3 text-base text-ink"
+            data-testid="canvas-text"
+            value={open.props?.text ?? open.root.text ?? ""}
+            onChange={(event) => studio.setElementProps({ text: event.target.value })}
+          />
+        </label>
+      ) : null}
       {open ? (
         <>
           <div
@@ -257,6 +271,14 @@ export function ElementsSelectionPane() {
         )}
       </div>
 
+      {open ? (
+        <PropertyFields
+          file={studio.file}
+          props={open.props ?? { tag: open.root.tag, text: open.root.text }}
+          testPrefix="element"
+          onChange={(patch: Partial<Properties>) => studio.setElementProps(patch)}
+        />
+      ) : null}
       {open ? (
         <Field label="Name" hint="Slug stays locked.">
           <input

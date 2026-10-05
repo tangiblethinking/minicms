@@ -50,6 +50,44 @@ export function AddPane() {
           </button>
         </div>
       </div>
+      <div>
+        <h3 className="text-sm font-medium">Padding</h3>
+        <p className="mt-1 text-xs text-muted">Vertical space between items. Mobile and desktop.</p>
+        <ul className="mt-2 flex flex-col gap-2">
+          {studio.file.spacing.padding.map((token) => (
+            <li key={token.id} className="rounded-sm border border-line p-2">
+              <span className="text-sm font-medium">{token.name}</span>
+              <label className="mt-2 flex flex-col gap-1 text-sm">
+                Mobile
+                <input className={fieldClass} data-testid={`padding-${token.id}-mobile`} value={token.mobile} onChange={(event) => studio.updateSpacing("padding", token.id, { mobile: event.target.value })} />
+              </label>
+              <label className="mt-2 flex flex-col gap-1 text-sm">
+                Desktop
+                <input className={fieldClass} data-testid={`padding-${token.id}-desktop`} value={token.desktop} onChange={(event) => studio.updateSpacing("padding", token.id, { desktop: event.target.value })} />
+              </label>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <h3 className="text-sm font-medium">Gap</h3>
+        <p className="mt-1 text-xs text-muted">Horizontal space inside an item.</p>
+        <ul className="mt-2 flex flex-col gap-2">
+          {studio.file.spacing.gap.map((token) => (
+            <li key={token.id} className="rounded-sm border border-line p-2">
+              <span className="text-sm font-medium">{token.name}</span>
+              <label className="mt-2 flex flex-col gap-1 text-sm">
+                Mobile
+                <input className={fieldClass} value={token.mobile} onChange={(event) => studio.updateSpacing("gap", token.id, { mobile: event.target.value })} />
+              </label>
+              <label className="mt-2 flex flex-col gap-1 text-sm">
+                Desktop
+                <input className={fieldClass} value={token.desktop} onChange={(event) => studio.updateSpacing("gap", token.id, { desktop: event.target.value })} />
+              </label>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <div>
         <h3 className="text-sm font-medium">Colors</h3>

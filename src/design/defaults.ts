@@ -1,10 +1,30 @@
-import type { DesignSystemFile } from "@/design/types";
+import type { DesignSystemFile, SpacingToken } from "@/design/types";
 
 export const ID_PATTERN = /^[a-z0-9-]+$/;
 
+export const DEFAULT_TYPE_SCALE = [
+  { id: "small", name: "Small", size: "0.875rem", lineHeight: "1.25rem" },
+  { id: "body", name: "Body", size: "1rem", lineHeight: "1.5rem" },
+  { id: "title", name: "Title", size: "1.25rem", lineHeight: "1.75rem" },
+  { id: "display", name: "Display", size: "2.25rem", lineHeight: "2.5rem" },
+];
+
+export const DEFAULT_SPACING: DesignSystemFile["spacing"] = {
+  padding: [
+    { id: "compact", name: "Compact", mobile: "8px", desktop: "12px" },
+    { id: "comfortable", name: "Comfortable", mobile: "16px", desktop: "24px" },
+    { id: "section", name: "Section", mobile: "32px", desktop: "64px" },
+  ],
+  gap: [
+    { id: "tight", name: "Tight", mobile: "8px", desktop: "12px" },
+    { id: "comfortable", name: "Comfortable", mobile: "16px", desktop: "24px" },
+  ],
+  margin: [{ id: "screen", name: "Screen", mobile: "16px", desktop: "32px" }],
+};
+
 export function createDefaultDesignSystem(): DesignSystemFile {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: "design-system",
     id: crypto.randomUUID(),
     name: "Design system",
@@ -20,7 +40,9 @@ export function createDefaultDesignSystem(): DesignSystemFile {
       { id: "sans", name: "Sans", stack: "ui-sans-serif, system-ui, sans-serif" },
       { id: "display", name: "Display", stack: "ui-sans-serif, system-ui, sans-serif" },
     ],
-    radius: [{ id: "card", value: "1rem" }],
+    radius: [{ id: "card", name: "Card", value: "1rem" }],
+    typeScale: DEFAULT_TYPE_SCALE,
+    spacing: DEFAULT_SPACING,
   };
 }
 
@@ -47,6 +69,8 @@ export function signature(file: DesignSystemFile): string {
     colors: file.colors,
     fonts: file.fonts,
     radius: file.radius,
+    typeScale: file.typeScale,
+    spacing: file.spacing,
   });
 }
 

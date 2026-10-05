@@ -1,4 +1,5 @@
 import { uniqueId } from "../design/defaults.ts";
+import type { Properties } from "@/props/model";
 import type { ElementItem, Node, NodeType } from "./types.ts";
 
 export const DEFAULT_IMAGE_SRC = "https://picsum.photos/id/1011/800/1000";
@@ -123,10 +124,23 @@ export function createElementFromStarter(starter: Starter, items: ElementItem[])
   };
   if (starter.text !== undefined) root.text = starter.text;
   if (starter.attrs) root.attrs = { ...starter.attrs };
+  const props: Properties = {
+    tag: starter.tag,
+    text: starter.text,
+    widthMode: starter.id === "frame" || starter.id === "image" || starter.id === "button" ? "fill" : "hug",
+    heightMode: starter.id === "image" ? "fixed" : "hug",
+    height: starter.id === "image" ? "200px" : undefined,
+    sizeId: starter.id === "heading" ? "title" : starter.id === "price" ? "body" : "small",
+    paddingId: starter.id === "frame" ? "comfortable" : starter.id === "button" ? "compact" : undefined,
+    src: starter.attrs?.src,
+    alt: starter.attrs?.alt,
+    href: starter.id === "button" ? "#" : undefined,
+  };
   return {
     id: crypto.randomUUID(),
     name,
     slug,
+    props,
     root,
   };
 }

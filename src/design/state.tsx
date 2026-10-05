@@ -106,6 +106,16 @@ type StudioContextValue = {
   updateColor: (id: string, patch: { name?: string; value?: string }) => void;
   updateFont: (id: string, patch: { name?: string; stack?: string }) => void;
   updateRadius: (id: string, patch: { value?: string }) => void;
+  updateSpacing: (
+    kind: "padding" | "gap" | "margin",
+    id: string,
+    patch: { name?: string; mobile?: string; desktop?: string },
+  ) => void;
+  breakpoint: "mobile" | "desktop";
+  setBreakpoint: (value: "mobile" | "desktop") => void;
+  setElementProps: (patch: Partial<import("@/props/model").Properties>) => void;
+  updateLibraryFromPlacement: () => void;
+  addPlacementToLibrary: () => void;
   addElement: (starterId: string) => void;
   openElementById: (id: string) => void;
   renameOpenElement: (name: string) => void;
@@ -119,7 +129,7 @@ type StudioContextValue = {
   renameOpenComponent: (name: string) => void;
   addPlacement: (elementId: string) => void;
   selectComponentNode: (id: string) => void;
-  setPlacementOverride: (key: "text" | "src" | "alt" | "href", value: string) => void;
+  setPlacementOverride: (key: string, value: string) => void;
   setGroupClasses: (classes: string[]) => void;
   renameGroup: (name: string) => void;
   movePlacement: (direction: -1 | 1) => void;
@@ -156,6 +166,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   const [openElementId, setOpenElementId] = useState<string | null>(null);
   const [savedLibrarySig, setSavedLibrarySig] = useState<string | null>(null);
   const [showTransparency, setShowTransparency] = useState(false);
+  const [breakpoint, setBreakpoint] = useState<"mobile" | "desktop">("desktop");
   const [elementSelected, setElementSelected] = useState(false);
   const [components, setComponents] = useState<ComponentLibraryFile>(() =>
     createDefaultComponentLibrary("pending"),
@@ -389,6 +400,100 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     [edit],
   );
 
+  const updateSpacing = useCallback(
+    (kind: "padding" | "gap" | "margin", id: string, patch: { name?: string; mobile?: string; desktop?: string }) => {
+      const current = fileRef.current;
+      edit({
+        ...current,
+        spacing: {
+          ...current.spacing,
+          [kind]: current.spacing[kind].map((token) => (token.id === id ? { ...token, ...patch } : token)),
+        },
+      });
+    },
+    [edit],
+  );
+
+  const setElementProps = useCallback(
+    (patch: Partial<import("@/props/model").Properties>) => {
+      const id = openElementIdRef.current;
+      if (!id) return;
+      const current = libraryRef.current;
+      editLibrary({
+        ...current,
+        items: current.items.map((item) => {
+          if (item.id !== id) return item;
+          const props = { ...item.props, ...patch };
+          const root = {
+            ...item.root,
+            tag: props.tag ?? item.root.tag,
+            text: props.text ?? item.root.text,
+          };
+          return { ...item, props, root };
+        }),
+      });
+    },
+    [editLibrary],
+  );
+
+  const updateLibraryFromPlacement = useCallback(() => {
+    const nodeId = selectedComponentNodeIdRef.current;
+    const openId = openComponentIdRef.current;
+    if (!nodeId || !openId) return;
+    const component = componentsRef.current.items.find((item) => item.id === openId);
+    if (!component) return;
+    const node = findNode(component.root, nodeId);
+    if (!node?.ref || node.ref.kind !== "element") return;
+    const element = libraryRef.current.items.find((item) => item.id === node.ref?.id);
+    if (!element) return;
+    const props = { ...element.props, ...node.overrides };
+    editLibrary({
+      ...libraryRef.current,
+      items: libraryRef.current.items.map((item) =>
+        item.id === element.id
+          ? { ...item, props, root: { ...item.root, tag: props.tag ?? item.root.tag, text: props.text ?? item.root.text } }
+          : item,
+      ),
+    });
+    editComponents({
+      ...componentsRef.current,
+      items: componentsRef.current.items.map((item) =>
+        item.id === openId ? { ...item, root: updateNode(component.root, nodeId, (current) => ({ ...current, overrides: {} })) } : item,
+      ),
+    });
+    setToast({ tone: "ok", message: `Updated ${element.name} in the element library.` });
+  }, [editLibrary]);
+
+  const addPlacementToLibrary = useCallback(() => {
+    const nodeId = selectedComponentNodeIdRef.current;
+    const openId = openComponentIdRef.current;
+    if (!nodeId || !openId) return;
+    const component = componentsRef.current.items.find((item) => item.id === openId);
+    if (!component) return;
+    const node = findNode(component.root, nodeId);
+    if (!node) return;
+    const source = node.ref ? libraryRef.current.items.find((item) => item.id === node.ref?.id) : undefined;
+    const name = `${source?.name ?? "Group"} copy`;
+    const slug = uniqueId(name, libraryRef.current.items.map((item) => item.slug));
+    const props = { ...source?.props, ...node.overrides };
+    const item = {
+      id: crypto.randomUUID(),
+      name,
+      slug,
+      props,
+      root: {
+        id: crypto.randomUUID(),
+        type: source?.root.type ?? "container",
+        tag: props.tag ?? "div",
+        classes: source?.root.classes ?? [],
+        text: props.text,
+        children: [],
+      },
+    };
+    editLibrary({ ...libraryRef.current, items: [...libraryRef.current.items, item] });
+    setToast({ tone: "ok", message: `Added ${name} to the element library.` });
+  }, [editLibrary]);
+
   const replaceOpenRoot = useCallback(
     (root: Node) => {
       const id = openElementIdRef.current;
@@ -543,7 +648,7 @@ export function StudioProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setPlacementOverride = useCallback(
-    (key: "text" | "src" | "alt" | "href", value: string) => {
+    (key: string, value: string) => {
       const openId = openComponentIdRef.current;
       const nodeId = selectedComponentNodeIdRef.current;
       if (!openId || !nodeId) return;
@@ -924,6 +1029,12 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       updateColor,
       updateFont,
       updateRadius,
+      updateSpacing,
+      breakpoint,
+      setBreakpoint,
+      setElementProps,
+      updateLibraryFromPlacement,
+      addPlacementToLibrary,
       addElement,
       openElementById,
       renameOpenElement,
@@ -987,6 +1098,12 @@ export function StudioProvider({ children }: { children: ReactNode }) {
       updateColor,
       updateFont,
       updateRadius,
+      updateSpacing,
+      breakpoint,
+      setBreakpoint,
+      setElementProps,
+      updateLibraryFromPlacement,
+      addPlacementToLibrary,
       addElement,
       openElementById,
       renameOpenElement,

@@ -62,6 +62,15 @@ function readNode(value: unknown, seen: Set<string>): Node | null {
   return node;
 }
 
+function readProps(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const props: Record<string, string | boolean> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry === "string" || typeof entry === "boolean") props[key] = entry;
+  }
+  return props;
+}
+
 function readItem(
   value: unknown,
   seenIds: Set<string>,
@@ -78,7 +87,7 @@ function readItem(
   if (!root) return null;
   seenIds.add(row.id);
   seenSlugs.add(row.slug);
-  return { id: row.id, name: row.name, slug: row.slug, root };
+  return { id: row.id, name: row.name, slug: row.slug, root, props: readProps(row.props) };
 }
 
 export function validateElementLibrary(input: unknown): ElementValidation {

@@ -3,11 +3,13 @@ import type { ElementItem } from "@/elements/types";
 import { escapeHtml } from "@/elements/html";
 import type { ComponentNode } from "@/component-library/types";
 import { resolveNode, type ResolvedNode } from "@/component-library/tree";
+import { compileStyle } from "@/props/model";
 import { buildThemeCss } from "@/preview/srcdoc";
 
-function renderResolved(node: ResolvedNode): string {
+function renderResolved(node: ResolvedNode, file: DesignSystemFile, breakpoint: "mobile" | "desktop"): string {
+  const style = compileStyle({ tag: node.tag, text: node.text }, file, breakpoint);
   const classes = node.classes.length > 0 ? ` class="${escapeHtml(node.classes.join(" "))}"` : "";
-  const attrParts = [`data-canvas-id="${escapeHtml(node.sourceId)}"${classes}`];
+  const attrParts = [`data-canvas-id="${escapeHtml(node.sourceId)}" style="${escapeHtml(style)}"${classes}`];
   if (node.attrs) {
     for (const [key, value] of Object.entries(node.attrs)) {
       if (!/^[a-zA-Z_:][a-zA-Z0-9_.:-]*$/.test(key)) continue;
@@ -19,7 +21,7 @@ function renderResolved(node: ResolvedNode): string {
     return `<${node.tag}${attr} />`;
   }
   const text = escapeHtml(node.text ?? "");
-  const children = node.children.map((child) => renderResolved(child as ResolvedNode)).join("");
+  const children = node.children.map((child) => renderResolved(child as ResolvedNode, file, breakpoint)).join("");
   return `<${node.tag}${attr}>${text}${children}</${node.tag}>`;
 }
 
@@ -27,9 +29,10 @@ export function buildComponentSrcDoc(
   file: DesignSystemFile,
   root: ComponentNode,
   elements: ElementItem[],
+  breakpoint: "mobile" | "desktop" = "desktop",
 ): string {
   const theme = buildThemeCss(file);
-  const markup = renderResolved(resolveNode(root, elements));
+  const markup = renderResolved(resolveNode(root, elements), file, breakpoint);
   return `<!doctype html>
 <html lang="en">
 <head>

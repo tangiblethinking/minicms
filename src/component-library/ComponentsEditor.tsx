@@ -2,6 +2,8 @@ import { useEffect, useId, useRef, type ReactNode } from "react";
 import { applyFamily, ownedClasses, sameClassSet, type OwnsContext } from "@/catalog/apply";
 import { familyOptions, readCatalog } from "@/catalog/options";
 import { GROUP_LABEL, type CatalogFamily, type CatalogGroup } from "@/catalog/types";
+import { PropertyFields } from "@/props/PropertyFields";
+import type { Properties } from "@/props/model";
 import { formatResolvedHtml, librarySource, resolveNode } from "@/component-library/tree";
 import {
   CANVAS_EMPTY_MESSAGE,
@@ -176,7 +178,7 @@ export function ComponentsCanvasPane() {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const open = studio.openComponent;
   const srcDoc = open
-    ? buildComponentSrcDoc(studio.file, open.root, studio.library.items)
+    ? buildComponentSrcDoc(studio.file, open.root, studio.library.items, studio.breakpoint)
     : "";
   const selectNode = studio.selectComponentNode;
 
@@ -357,56 +359,30 @@ export function ComponentsSelectionPane() {
         </Field>
       ) : null}
 
-      {selected?.ref ? (
+      {selected?.ref && element ? (
         <>
-          {element && isTextual(element.root) ? (
-            <Field label="Text" hint="Override. Does not change the element.">
-              <input
-                className={fieldClass}
-                data-testid="override-text"
-                value={selected.overrides?.text ?? element.root.text ?? ""}
-                onChange={(event) => studio.setPlacementOverride("text", event.target.value)}
-              />
-            </Field>
-          ) : null}
-          {element?.root.type === "image" ? (
-            <>
-              <Field label="URL" hint="Override. Does not change the element.">
-                <input
-                  className={fieldClass}
-                  data-testid="override-src"
-                  spellCheck={false}
-                  value={selected.overrides?.src ?? element.root.attrs?.src ?? ""}
-                  onChange={(event) => studio.setPlacementOverride("src", event.target.value)}
-                />
-              </Field>
-              <Field label="Alt" hint="Override. Does not change the element.">
-                <input
-                  className={fieldClass}
-                  data-testid="override-alt"
-                  value={selected.overrides?.alt ?? element.root.attrs?.alt ?? ""}
-                  onChange={(event) => studio.setPlacementOverride("alt", event.target.value)}
-                />
-              </Field>
-            </>
-          ) : null}
-          {element && (element.root.type === "link" || element.root.type === "button") ? (
-            <Field label="Link" hint="Override. Does not change the element.">
-              <input
-                className={fieldClass}
-                data-testid="override-href"
-                spellCheck={false}
-                value={selected.overrides?.href ?? element.root.attrs?.href ?? ""}
-                onChange={(event) => studio.setPlacementOverride("href", event.target.value)}
-              />
-            </Field>
-          ) : null}
+          <p className="text-sm text-muted">Instance override. This does not change the element until you update the library.</p>
+          <PropertyFields
+            file={studio.file}
+            props={{ ...element.props, ...selected.overrides, tag: selected.overrides?.tag ?? element.props?.tag ?? element.root.tag, text: selected.overrides?.text ?? element.props?.text ?? element.root.text }}
+            testPrefix="instance"
+            onChange={(patch: Partial<Properties>) => {
+              for (const [key, value] of Object.entries(patch)) {
+                if (typeof value === "string") studio.setPlacementOverride(key, value);
+              }
+            }}
+          />
+          <button type="button" className={secondaryButton} data-testid="update-library" onClick={studio.updateLibraryFromPlacement}>
+            Update the library
+          </button>
+          <button type="button" className={secondaryButton} data-testid="add-to-library" onClick={studio.addPlacementToLibrary}>
+            Add to library
+          </button>
           <button
             type="button"
             className={`${secondaryButton} w-full justify-start`}
             data-testid="edit-element-definition"
-            disabled={!element}
-            onClick={() => element && studio.editElementDefinition(element.id)}
+            onClick={() => studio.editElementDefinition(element.id)}
           >
             Edit element definition
           </button>
